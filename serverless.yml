@@ -11,10 +11,17 @@
 #
 # Happy Coding!
 
-service: helloworld
+service: covid-supply-estimator-api
+frameworkVersion: ">=1.40.0 <2.0.0"
+app: my-first-app # change app_id
+org: cupurion234 # change organization
+
+# frameworkVersion: "=X.X.X"
+
+# service: helloworld
 # app and org for use with dashboard.serverless.com
-app: helloworld-app
-org: panangam
+# app: helloworld-app
+# org: panangam
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details

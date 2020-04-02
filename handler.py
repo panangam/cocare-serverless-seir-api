@@ -5,15 +5,15 @@ assumption = {
     'avg_weight': 60  # น้ำหนักเฉลี่ยประชากรในพื้นที่
 }
 resource_consumption = {
-    ## facility
+    # facility
     'p_aiir': 0.05,  # % % การใช้ห้อง negative pressure ที่ใช้จากจำนวนผู้ป่วยติดเชื้อ
-    ## machine
+    # machine
     'p_vent': 1,  # % การใช้ ventilators จากจำนวนผู้ป่วย ICU
     'p_ecmo': 0.5,  # % การใช้ ECMO จากจำนวนผู้ป่วย ICU
     'rate_ct_scan': 2,  # CT-Scan ตรวจได้ชั่วโมงกี่คน
     'rate_cxr': 6,  # Chest X-Ray ตรวจได้ชั่วโมงละกี่คน
     'd_pcr': 6,  # Lab PCR ใช้ระยะเวลาตรวจ case ละกี่ชั่วโมง
-    ## material
+    # material
     'favipiravir_tab': 200,  # mg
     'lopinavir_tab': 200,  # mg
     'darunavir_tab': 600,  # mg
@@ -21,10 +21,11 @@ resource_consumption = {
     'chloroquine_tab': 250,  # mg
     'ppe_used_per_shift_per_staff': 1,  # เจ้าหน้าที่เปลี่ยน PPE Set กะละกี่ครั้ง
     'ppe_used_per_swab': 1,  # จำนวน PPE Set ที่ใช้ในการ Swab
-    'ppe_used_per_install_venti': 1,  # จำนวน PPE Set ที่ใช้ในการติดตั้งเครื่องช่วยหายใจ
+    # จำนวน PPE Set ที่ใช้ในการติดตั้งเครื่องช่วยหายใจ
+    'ppe_used_per_install_venti': 1,
     'ppe_used_per_suction': 1,  # จำนวน PPE Set ที่ใช้ในการทำ Suction
     'icu_suction_times': 9,  # จำนวนครั้งการทำ suction ของผู้ป่วยที่ใช้เครื่องช่วยหายใจ
-    ## man
+    # man
     'staff_shift_workshour': 8,  # จำนวนชั่วโมงทำงานของเจ้าหน้าที่ใน 1 กะ
     'staff_nurse_icu_per_pt': (24 * 1) / 2,
     # (จำนวนชั่วโมงทำงาน*จำนวนบุคลากรในทีม)/จำนวนผู้ป่วยที่ดูแล
@@ -61,12 +62,16 @@ def hello(event, context):
     initial_data, params = gen_initial(params, user_input)
 
     SEIR_df = SEIR(params, initial_data, user_input['steps'])
-    hos_load_df = transform_seir(SEIR_df, params, user_input['hospital_market_share'])
-    resource_projection_df = project_resource(hos_load_df, resource_consumption)
+    hos_load_df = transform_seir(
+        SEIR_df, params, user_input['hospital_market_share'])
+    resource_projection_df = project_resource(
+        hos_load_df, resource_consumption)
 
     # transform dataframes to json serializable objects
-    seir_json = SEIR_df.set_index('date').to_json(orient='split', date_format='iso')
-    resource_json = resource_projection_df.set_index('date').to_json(orient='split', date_format='iso')
+    seir_json = SEIR_df.set_index('date').to_json(
+        orient='split', date_format='iso')
+    resource_json = resource_projection_df.set_index(
+        'date').to_json(orient='split', date_format='iso')
 
     body = ''.join([
         '{"seir":',
@@ -98,7 +103,8 @@ def SEIR(params, initial_data, steps=1):
         eod[-2] = diff[-2]
         eod[-3] = diff[-3]
         eod[-4] = diff[-4]
-        time_series = time_series.append(eod, ignore_index=True)  # TODO: เพิ่ม new pt ด้วย
+        time_series = time_series.append(
+            eod, ignore_index=True)  # TODO: เพิ่ม new pt ด้วย
     return time_series
 
 
@@ -160,41 +166,44 @@ def get_differentials(params, sod, day=0):
     diff_i = sigma * e - gamma * i
     diff_pui = gamma * i - (1 / d_test) * pui
     diff_hos_mild = (
-            p_mild * (1 / d_test) * pui
-            - p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
-            - p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
-            - (1 / los_hos_mild) * hos_mild
+        p_mild * (1 / d_test) * pui
+        - p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
+        - p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
+        - (1 / los_hos_mild) * hos_mild
     )
     diff_hos_severe = (
-            p_severe * (1 / d_test) * pui
-            - p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
-            - p_severe_hotel * (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
-            - (1 / los_hos_severe) * hos_severe
+        p_severe * (1 / d_test) * pui
+        - p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
+        - p_severe_hotel *
+        (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
+        - (1 / los_hos_severe) * hos_severe
     )
-    diff_hos_critical = p_critical * (1 / d_test) * pui - (1 / los_hos_critical) * hos_critical
+    diff_hos_critical = p_critical * \
+        (1 / d_test) * pui - (1 / los_hos_critical) * hos_critical
     diff_hos_fatal = p_fatal * (1 / d_test) * pui - (1 / d_death) * hos_fatal
     diff_home_mild = (
-            p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
-            - (1 / (los_hos_mild - los_home_mild)) * home_mild
+        p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
+        - (1 / (los_hos_mild - los_home_mild)) * home_mild
     )
     diff_home_severe = (
-            p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
-            - (1 / (los_hos_severe - los_home_severe)) * home_severe
+        p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
+        - (1 / (los_hos_severe - los_home_severe)) * home_severe
     )
     diff_hotel_mild = (
-            p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
-            - (1 / (los_hos_mild - los_hotel_mild)) * hotel_mild
+        p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
+        - (1 / (los_hos_mild - los_hotel_mild)) * hotel_mild
     )
     diff_hotel_severe = (
-            p_severe_hotel * (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
-            - (1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
+        p_severe_hotel * (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
+        - (1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
     )
     diff_r_mild_hos = (1 / los_hos_mild) * hos_mild
     diff_r_mild_home = (1 / (los_hos_mild - los_home_mild)) * home_mild
     diff_r_mild_hotel = (1 / (los_hos_mild - los_hotel_mild)) * hotel_mild
     diff_r_severe_hos = (1 / los_hos_severe) * hos_severe
     diff_r_severe_home = (1 / (los_hos_severe - los_home_severe)) * home_severe
-    diff_r_severe_hotel = (1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
+    diff_r_severe_hotel = (
+        1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
     diff_r_critical = (1 / los_hos_critical) * hos_critical
     diff_death = (1 / d_death) * hos_fatal
 
@@ -210,29 +219,31 @@ def get_differentials(params, sod, day=0):
             diff_r_severe_home, diff_r_severe_hotel, diff_r_critical, diff_death,
             new_hos_mild, new_hos_severe, new_hos_critical, new_pui]
 
+
 def get_default():
     params = {'d_incubation': 6.1,
-            'd_infectious': 2.3,
-            'd_test': 2,
-            'd_death': 28,
-            'los_hos_mild': 14,
-            'los_hos_severe': 28,
-            'los_hos_critical': 28,
-            'los_home_mild': 7,
-            'los_home_severe': 7,
-            'los_hotel_mild': 7,
-            'los_hotel_severe': 7,
-            'cfr': 0.023,
-            'p_critical': 0.05 - 0.023,
-            'p_severe': 0.14,
-            'p_mild': 0.81,
-            'p_mild_hotel': 0,
-            'p_mild_home': 0,
-            'p_severe_hotel': 0,
-            'p_severe_home': 0,
-            'p_test_positive': 0.1
-            }
+              'd_infectious': 2.3,
+              'd_test': 2,
+              'd_death': 28,
+              'los_hos_mild': 14,
+              'los_hos_severe': 28,
+              'los_hos_critical': 28,
+              'los_home_mild': 7,
+              'los_home_severe': 7,
+              'los_hotel_mild': 7,
+              'los_hotel_severe': 7,
+              'cfr': 0.023,
+              'p_critical': 0.05 - 0.023,
+              'p_severe': 0.14,
+              'p_mild': 0.81,
+              'p_mild_hotel': 0,
+              'p_mild_home': 0,
+              'p_severe_hotel': 0,
+              'p_severe_home': 0,
+              'p_test_positive': 0.1
+              }
     return params
+
 
 def gen_initial(params, user_input):
     growth = 2**(1/user_input['doubling_time']) - 1
@@ -242,8 +253,9 @@ def gen_initial(params, user_input):
     i = pui*(growth + (1/params['d_test']))/gamma
     e = i*(growth + gamma)/sigma
     beta = (growth + gamma)*(growth + sigma)/sigma
-    r0 =  beta/gamma
-    s = user_input['regional_population'] - user_input['total_confirm_cases'] - pui - i - e
+    r0 = beta/gamma
+    s = user_input['regional_population'] - \
+        user_input['total_confirm_cases'] - pui - i - e
 
     # update params
     params['r0'] = r0
@@ -251,15 +263,17 @@ def gen_initial(params, user_input):
     params['social_distancing'] = user_input['social_distancing']
 
     # create initial data for start date
-    recover = user_input['total_confirm_cases'] - user_input['active_cases'] - user_input['death']
+    recover = user_input['total_confirm_cases'] - \
+        user_input['active_cases'] - user_input['death']
     initial_data = {
-        'date' :user_input['start_date'],
+        'date': user_input['start_date'],
         's': s,
         'e': e,
         'i': i,
         'pui': pui,
-        'hos_mild': params['p_mild']*user_input['active_cases'], # TODO: check this ตอนแรกเยอะเกินไปหรือเปล่า
-        'hos_severe':params['p_severe']*user_input['active_cases'],
+        # TODO: check this ตอนแรกเยอะเกินไปหรือเปล่า
+        'hos_mild': params['p_mild']*user_input['active_cases'],
+        'hos_severe': params['p_severe']*user_input['active_cases'],
         'hos_critical': params['p_critical']*user_input['active_cases'],
         'hos_fatal': params['cfr']*user_input['active_cases'],
         'home_mild': 0,
@@ -273,7 +287,7 @@ def gen_initial(params, user_input):
         'r_severe_home': 0,
         'r_severe_hotel': 0,
         'r_critical_hos': (params['p_critical'] + params['cfr'])*recover,
-        'death':user_input['death'],
+        'death': user_input['death'],
         'new_hos_mild': 0,
         'new_hos_severe': 0,
         'new_hos_critical': 0,
@@ -287,14 +301,18 @@ def transform_seir(seir_df, params, hopital_market_share):
     hos_load_df = pd.DataFrame()
     hos_load_df['date'] = seir_df['date']
     hos_load_df['pt_hos_eod_mild'] = hopital_market_share * seir_df['hos_mild']
-    hos_load_df['pt_hos_eod_severe'] = hopital_market_share * seir_df['hos_severe']
+    hos_load_df['pt_hos_eod_severe'] = hopital_market_share * \
+        seir_df['hos_severe']
     hos_load_df['pt_hos_eod_critical'] = hopital_market_share * (
-            seir_df['hos_critical'] + seir_df['hos_fatal'])
-    hos_load_df['pt_hos_new_mild'] = hopital_market_share * seir_df['new_hos_mild']
-    hos_load_df['pt_hos_new_severe'] = hopital_market_share * seir_df['new_hos_severe']
-    hos_load_df['pt_hos_new_critical'] = hopital_market_share * seir_df['new_hos_critical']
+        seir_df['hos_critical'] + seir_df['hos_fatal'])
+    hos_load_df['pt_hos_new_mild'] = hopital_market_share * \
+        seir_df['new_hos_mild']
+    hos_load_df['pt_hos_new_severe'] = hopital_market_share * \
+        seir_df['new_hos_severe']
+    hos_load_df['pt_hos_new_critical'] = hopital_market_share * \
+        seir_df['new_hos_critical']
     hos_load_df['pt_hos_neg_cases'] = hopital_market_share * seir_df['new_pui'] / (
-            1 - params['p_test_positive'])
+        1 - params['p_test_positive'])
     hos_load_df['pt_hos_pui'] = hopital_market_share * seir_df[
         'pui'] * 1  # TODO: add parameter to adjust % of pui admit
 
@@ -314,11 +332,13 @@ def project_resource(df, params):
     resources_df['aiir'] = round(
         (df['pt_hos_eod_mild'] + df['pt_hos_eod_severe'] + df['pt_hos_eod_critical']) * params[
             'p_aiir'], 0)
-    resources_df['venti'] = round(resources_df['bed_icu'] * params['p_vent'], 0)
+    resources_df['venti'] = round(
+        resources_df['bed_icu'] * params['p_vent'], 0)
     resources_df['ecmo'] = round(resources_df['bed_icu'] * params['p_ecmo'], 0)
 
     # hos
-    resources_df['bed_hos'] = round(df['pt_hos_eod_severe'] + df['pt_hos_eod_mild'], 0)
+    resources_df['bed_hos'] = round(
+        df['pt_hos_eod_severe'] + df['pt_hos_eod_mild'], 0)
     resources_df['ppe_gloves'] = round(
         df['pt_hos_eod_mild'] * 3
         + df['pt_hos_eod_severe'] * 6
@@ -339,6 +359,7 @@ def project_resource(df, params):
     # test kit
 
     return resources_df
+
 
 if __name__ == '__main__':
     sample_user_input = {
