@@ -1,5 +1,43 @@
 import pandas as pd
 
+# Data preparation
+assumption = {
+    'avg_weight': 60  # น้ำหนักเฉลี่ยประชากรในพื้นที่
+}
+
+resource_consumption = {
+    # facility
+    'p_aiir': 0.05,  # % % การใช้ห้อง negative pressure ที่ใช้จากจำนวนผู้ป่วยติดเชื้อ
+
+    # machine
+    'p_vent': 1,  # % การใช้ ventilators จากจำนวนผู้ป่วย ICU
+    'p_ecmo': 0.5,  # % การใช้ ECMO จากจำนวนผู้ป่วย ICU
+    'rate_ct_scan': 2,  # CT-Scan ตรวจได้ชั่วโมงกี่คน
+    'rate_cxr': 6,  # Chest X-Ray ตรวจได้ชั่วโมงละกี่คน
+    'd_pcr': 6,  # Lab PCR ใช้ระยะเวลาตรวจ case ละกี่ชั่วโมง
+
+    # material
+    'favipiravir_tab': 200,  # mg
+    'lopinavir_tab': 200,  # mg
+    'darunavir_tab': 600,  # mg
+    'ritonavir_tab': 50,  # mg
+    'chloroquine_tab': 250,  # mg
+    'ppe_used_per_shift_per_staff': 1,  # เจ้าหน้าที่เปลี่ยน PPE Set กะละกี่ครั้ง
+    'ppe_used_per_swab': 1,  # จำนวน PPE Set ที่ใช้ในการ Swab
+
+    # จำนวน PPE Set ที่ใช้ในการติดตั้งเครื่องช่วยหายใจ
+    'ppe_used_per_install_venti': 1,
+    'ppe_used_per_suction': 1,  # จำนวน PPE Set ที่ใช้ในการทำ Suction
+    'icu_suction_times': 9,  # จำนวนครั้งการทำ suction ของผู้ป่วยที่ใช้เครื่องช่วยหายใจ
+
+    # man
+    'staff_shift_workshour': 8,  # จำนวนชั่วโมงทำงานของเจ้าหน้าที่ใน 1 กะ
+    'staff_nurse_icu_per_pt': (24 * 1) / 2,
+
+    # (จำนวนชั่วโมงทำงาน*จำนวนบุคลากรในทีม)/จำนวนผู้ป่วยที่ดูแล
+    'staff_nurse_aid_icu_per_pt': (24 * 1) / 2,
+}
+
 
 def SEIR(params, initial_data, steps=1):
     # do thing
@@ -158,25 +196,32 @@ def get_default():
 
 
 def gen_initial(params, user_input):
-    growth = 2**(1/user_input['doubling_time']) - 1
+    doubling_time = int(user_input['doubling_time'])
+    total_confirm_cases = int(user_input['total_confirm_cases'])
+    regional_population = int(user_input['regional_population'])
+
+    active_cases = int(user_input['active_cases'])
+    death = int(user_input['death'])
+
+    growth = 2**(1/doubling_time) - 1
     gamma = 1/params['d_infectious']
     sigma = 1/params['d_incubation']
-    pui = growth*user_input['total_confirm_cases']*params['d_test']
+    pui = growth*total_confirm_cases*params['d_test']
     i = pui*(growth + (1/params['d_test']))/gamma
     e = i*(growth + gamma)/sigma
     beta = (growth + gamma)*(growth + sigma)/sigma
     r0 = beta/gamma
-    s = user_input['regional_population'] - \
-        user_input['total_confirm_cases'] - pui - i - e
+    s = regional_population - \
+        total_confirm_cases - pui - i - e
 
     # update params
     params['r0'] = r0
-    params['n'] = user_input['regional_population']
+    params['n'] = regional_population
     params['social_distancing'] = user_input['social_distancing']
 
     # create initial data for start date
-    recover = user_input['total_confirm_cases'] - \
-        user_input['active_cases'] - user_input['death']
+    recover = total_confirm_cases - \
+        active_cases - death
     initial_data = {
         'date': user_input['start_date'],
         's': s,
@@ -184,10 +229,10 @@ def gen_initial(params, user_input):
         'i': i,
         'pui': pui,
         # TODO: check this ตอนแรกเยอะเกินไปหรือเปล่า
-        'hos_mild': params['p_mild']*user_input['active_cases'],
-        'hos_severe': params['p_severe']*user_input['active_cases'],
-        'hos_critical': params['p_critical']*user_input['active_cases'],
-        'hos_fatal': params['cfr']*user_input['active_cases'],
+        'hos_mild': params['p_mild']*active_cases,
+        'hos_severe': params['p_severe']*active_cases,
+        'hos_critical': params['p_critical']*active_cases,
+        'hos_fatal': params['cfr']*active_cases,
         'home_mild': 0,
         'home_severe': 0,
         'hotel_mild': 0,
@@ -199,7 +244,7 @@ def gen_initial(params, user_input):
         'r_severe_home': 0,
         'r_severe_hotel': 0,
         'r_critical_hos': (params['p_critical'] + params['cfr'])*recover,
-        'death': user_input['death'],
+        'death': death,
         'new_hos_mild': 0,
         'new_hos_severe': 0,
         'new_hos_critical': 0,
@@ -271,3 +316,31 @@ def project_resource(df, params):
     # test kit
 
     return resources_df
+
+
+def prepare_input(user_input):
+    default_params = get_default()
+    input_parcel = user_input
+    user_input['start_date'] = pd.to_datetime(user_input['start_date'])
+    user_input['social_distancing'] = [
+        float(user_input['social_distancing']),
+        float(user_input['social_distancing_start']),
+        float(user_input['social_distancing_end'])
+    ]
+    return input_parcel, default_params
+
+
+def seir_estimation(params, initial_data, user_input):
+    SEIR_df = SEIR(params, initial_data, int(user_input['steps']))
+
+    hos_load_df = transform_seir(
+        SEIR_df, params, float(user_input['hospital_market_share']))
+    resource_projection_df = project_resource(
+        hos_load_df, resource_consumption)
+
+    seir_json = SEIR_df.set_index('date').to_json(
+        orient='split', date_format='iso')
+    resource_json = resource_projection_df.set_index(
+        'date').to_json(orient='split', date_format='iso')
+
+    return seir_json, resource_json

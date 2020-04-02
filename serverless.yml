@@ -56,6 +56,10 @@ functions:
           path: api/supply-service
           method: post
           cors: true
+package:
+  exclude:
+    - node_modules/**
+    - venv/**
 
 plugins:
   - serverless-python-requirements
