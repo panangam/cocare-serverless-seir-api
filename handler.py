@@ -1,9 +1,13 @@
 import json
+from io import BytesIO
+import base64
+
 import pandas as pd
 import sendgrid
+import matplotlib.pyplot as plt
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-from method.seir import gen_initial, prepare_input, seir_estimation
+from method.seir import gen_initial, prepare_input, seir_estimation, seir_df_to_json
 
 
 def supply_estimation(event, context):
@@ -13,8 +17,10 @@ def supply_estimation(event, context):
     # Model and prediction
     user_input, default_params = prepare_input(user_input)
     initial_data, params = gen_initial(default_params, user_input)
-    seir_json, resource_json = seir_estimation(
-        params, initial_data, user_input)
+    seir_df, resource_df = seir_estimation(
+        params, initial_data, user_input
+    )
+    seir_json, resource_json = seir_df_to_json(seir_df, resource_df)
 
     response_body = ''.join([
         '{"seir":',
@@ -43,20 +49,21 @@ def supply_service(event, context):
 
     # Model and prediction
     initial_data, params = gen_initial(default_params, user_input)
-    seir_json, resource_json = seir_estimation(
-        params, initial_data, user_input)
+    seir_df, resource_df = seir_estimation(
+        params, initial_data, user_input
+    )
 
     # Population calculator
-    population = [120, 125, 130, 145, 160, 190,
-                  210, 220, 420, 670, 1040, 1240, 1450, 1600]
+    patients = seir_df[['hos_mild', 'hos_severe', 'hos_critical']].sum(axis=1).to_list()
+
     pop_y = ''
     pop_x = ''
     label_x = ''
-    for index, i in enumerate(population):
+    for index, i in enumerate(patients):
         pop_y += str(i)
         pop_x += str(index)
         label_x += "D{}".format(str(index+1))
-        if index < (len(population) - 1):
+        if index < (len(patients) - 1):
             pop_y += '%2C'
             pop_x += '%2C'
             label_x += '%7C'
@@ -64,8 +71,8 @@ def supply_service(event, context):
     # Supply ICU calculator
     # icu_supply = [1000, 890, 750, 640, 550,
     #               320, 180, 110, 80, 60, 30, 20, 12, 5, 0]
-    icu_demand = [0, 4, 12, 20, 25, 38,
-                  44, 48, 52, 56, 60, 80, 90, 110, 160]
+    icu_demand = resource_df['bed_icu'].to_list()
+
     icu_supply_y = ''
     icu_supply_x = ''
     icu_supply_label_x = ''
@@ -89,7 +96,14 @@ def supply_service(event, context):
             icu_demand_x += '%2C'
             # icu_demand_x += '%7C'
 
-    # icu_image_base_64 =
+
+    # plotting
+    fig, ax = plt.subplots(figsize=(16, 9))
+    ax.plot(resource_df['date'], resource_df['bed_icu'])
+    ax.legend(['ICU Bed'])
+    img_stream = BytesIO()
+    fig.savefig(img_stream, format='png')
+    icu_image_base_64 = base64.b64encode(img_stream.getvalue()).decode()
 
     # Prepare EMAIL
     message = Mail(

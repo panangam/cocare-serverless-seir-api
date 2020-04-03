@@ -338,9 +338,11 @@ def seir_estimation(params, initial_data, user_input):
     resource_projection_df = project_resource(
         hos_load_df, resource_consumption)
 
-    seir_json = SEIR_df.set_index('date').to_json(
-        orient='split', date_format='iso')
-    resource_json = resource_projection_df.set_index(
-        'date').to_json(orient='split', date_format='iso')
+    return SEIR_df, resource_projection_df
 
+def seir_df_to_json(seir_df, resource_df):
+    seir_json = seir_df.set_index('date').to_json(
+        orient='split', date_format='iso')
+    resource_json = resource_df.set_index(
+        'date').to_json(orient='split', date_format='iso')
     return seir_json, resource_json
