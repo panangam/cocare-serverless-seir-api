@@ -62,8 +62,8 @@ def supply_service(event, context):
             label_x += '%7C'
 
     # Supply ICU calculator
-    icu_supply = [1000, 890, 750, 640, 550,
-                  320, 180, 110, 80, 60, 30, 20, 12, 5, 0]
+    # icu_supply = [1000, 890, 750, 640, 550,
+    #               320, 180, 110, 80, 60, 30, 20, 12, 5, 0]
     icu_demand = [0, 4, 12, 20, 25, 38,
                   44, 48, 52, 56, 60, 80, 90, 110, 160]
     icu_supply_y = ''
@@ -72,14 +72,14 @@ def supply_service(event, context):
     icu_demand_y = ''
     icu_demand_x = ''
     icu_demand_label_x = ''
-    for index, i in enumerate(icu_supply):
-        icu_supply_y += str(i)
-        icu_supply_x += str(index)
-        # icu_supply_x += "D{}".format(str(index+1))
-        if index < (len(icu_supply) - 1):
-            icu_supply_y += '%2C'
-            icu_supply_x += '%2C'
-            # icu_supply_x += '%7C'
+    # for index, i in enumerate(icu_supply):
+    #     icu_supply_y += str(i)
+    #     icu_supply_x += str(index)
+    #     # icu_supply_x += "D{}".format(str(index+1))
+    #     if index < (len(icu_supply) - 1):
+    #         icu_supply_y += '%2C'
+    #         icu_supply_x += '%2C'
+    #         # icu_supply_x += '%7C'
     for index, i in enumerate(icu_demand):
         icu_demand_y += str(i)
         icu_demand_x += str(index)
@@ -88,6 +88,8 @@ def supply_service(event, context):
             icu_demand_y += '%2C'
             icu_demand_x += '%2C'
             # icu_demand_x += '%7C'
+
+    # icu_image_base_64 =
 
     # Prepare EMAIL
     message = Mail(
