@@ -64,15 +64,15 @@ def get_default():
               # Date today
               'today': datetime.today().strftime('%Y-%m-%d'),
               # Social distancing
-              'social_distancing_rate': 0.5,
-              'social_distance_day_start': 10,
-              'social_distance_day_end': 40,
-              'hospital_market_share': 15,
+              'social_distancing_rate': 0,
+              'social_distance_day_start': 0,
+              'social_distance_day_end': 1,
+              'hospital_market_share': 1,
               # Cases default_data
               'doubling_time': 7,
-              'total_confirm_cases': 3000,
+              'total_confirm_cases': 1,
               'critical_cases': 0,
-              'regional_population': 640000,
+              'regional_population': 66000000,
               'death': 0,
               # Predict for
               'steps': 14
