@@ -37,6 +37,10 @@ resource_consumption = {
 
     # (จำนวนชั่วโมงทำงาน*จำนวนบุคลากรในทีม)/จำนวนผู้ป่วยที่ดูแล
     'staff_nurse_aid_icu_per_pt': (24 * 1) / 2,
+    # drug
+    'favipiravir_first_used': 8,
+    'faviriravir_census_used': 3,
+
 }
 
 
@@ -71,6 +75,7 @@ def get_default():
               # Cases default_data
               'doubling_time': 7,
               'total_confirm_cases': 1,
+              'active_cases': 1,
               'critical_cases': 0,
               'regional_population': 66000000,
               'death': 0,
@@ -82,7 +87,7 @@ def get_default():
 
 def SEIR(params, initial_data, steps=1):
     # do thing
-    time_series = pd.DataFrame([initial_data])
+    time_series = pd.DataFrame([initial_data.values()], columns=list(initial_data.keys()))
     for i in range(steps):
         sod = time_series.iloc[-1]
         diff = get_differentials(params, sod, i)
@@ -101,10 +106,10 @@ def SEIR(params, initial_data, steps=1):
 
 def get_differentials(params, sod, day=0):
     # params
-    if day < params['social_distancing'][1]:
+    if day < params['social_distancing_rate'][1]:
         r0 = params['r0']
-    elif day <= params['social_distancing'][2]:
-        r0 = (1 - params['social_distancing'][0]) * params['r0']
+    elif day <= params['social_distancing_rate'][2]:
+        r0 = (1 - params['social_distancing_rate'][0]) * params['r0']
     else:
         r0 = params['r0']
     d_test = params['d_test']
@@ -157,36 +162,36 @@ def get_differentials(params, sod, day=0):
     diff_i = sigma * e - gamma * i
     diff_pui = gamma * i - (1 / d_test) * pui
     diff_hos_mild = (
-        p_mild * (1 / d_test) * pui
-        - p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
-        - p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
-        - (1 / los_hos_mild) * hos_mild
+            p_mild * (1 / d_test) * pui
+            - p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
+            - p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
+            - (1 / los_hos_mild) * hos_mild
     )
     diff_hos_severe = (
-        p_severe * (1 / d_test) * pui
-        - p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
-        - p_severe_hotel *
-        (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
-        - (1 / los_hos_severe) * hos_severe
+            p_severe * (1 / d_test) * pui
+            - p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
+            - p_severe_hotel *
+            (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
+            - (1 / los_hos_severe) * hos_severe
     )
     diff_hos_critical = p_critical * \
-        (1 / d_test) * pui - (1 / los_hos_critical) * hos_critical
+                        (1 / d_test) * pui - (1 / los_hos_critical) * hos_critical
     diff_hos_fatal = p_fatal * (1 / d_test) * pui - (1 / d_death) * hos_fatal
     diff_home_mild = (
-        p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
-        - (1 / (los_hos_mild - los_home_mild)) * home_mild
+            p_mild_home * (1 / (los_hos_mild - los_home_mild)) * hos_mild
+            - (1 / (los_hos_mild - los_home_mild)) * home_mild
     )
     diff_home_severe = (
-        p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
-        - (1 / (los_hos_severe - los_home_severe)) * home_severe
+            p_severe_home * (1 / (los_hos_severe - los_home_severe)) * hos_severe
+            - (1 / (los_hos_severe - los_home_severe)) * home_severe
     )
     diff_hotel_mild = (
-        p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
-        - (1 / (los_hos_mild - los_hotel_mild)) * hotel_mild
+            p_mild_hotel * (1 / (los_hos_mild - los_hotel_mild)) * hos_mild
+            - (1 / (los_hos_mild - los_hotel_mild)) * hotel_mild
     )
     diff_hotel_severe = (
-        p_severe_hotel * (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
-        - (1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
+            p_severe_hotel * (1 / (los_hos_severe - los_hotel_severe)) * hos_severe
+            - (1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
     )
     diff_r_mild_hos = (1 / los_hos_mild) * hos_mild
     diff_r_mild_home = (1 / (los_hos_mild - los_home_mild)) * home_mild
@@ -194,7 +199,7 @@ def get_differentials(params, sod, day=0):
     diff_r_severe_hos = (1 / los_hos_severe) * hos_severe
     diff_r_severe_home = (1 / (los_hos_severe - los_home_severe)) * home_severe
     diff_r_severe_hotel = (
-        1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
+                                  1 / (los_hos_severe - los_hotel_severe)) * hotel_severe
     diff_r_critical = (1 / los_hos_critical) * hos_critical
     diff_death = (1 / d_death) * hos_fatal
 
@@ -223,25 +228,25 @@ def gen_initial(params, user_input):
     death = int(user_input.get(
         'death', params['death']))
 
-    growth = 2**(1/doubling_time) - 1
-    gamma = 1/params['d_infectious']
-    sigma = 1/params['d_incubation']
-    pui = growth*total_confirm_cases*params['d_test']
-    i = pui*(growth + (1/params['d_test']))/gamma
-    e = i*(growth + gamma)/sigma
-    beta = (growth + gamma)*(growth + sigma)/sigma
-    r0 = beta/gamma
+    growth = 2 ** (1 / doubling_time) - 1
+    gamma = 1 / params['d_infectious']
+    sigma = 1 / params['d_incubation']
+    pui = growth * total_confirm_cases * params['d_test']
+    i = pui * (growth + (1 / params['d_test'])) / gamma
+    e = i * (growth + gamma) / sigma
+    beta = (growth + gamma) * (growth + sigma) / sigma
+    r0 = beta / gamma
     s = regional_population - \
         total_confirm_cases - pui - i - e
 
     # update params
     params['r0'] = r0
     params['n'] = regional_population
-    params['social_distancing'] = user_input['social_distancing']
+    params['social_distancing_rate'] = user_input['social_distancing']
 
     # create initial data for start date
     recover = total_confirm_cases - \
-        active_cases - death
+              active_cases - death
     initial_data = {
         'date': user_input['start_date'],
         's': s,
@@ -249,21 +254,21 @@ def gen_initial(params, user_input):
         'i': i,
         'pui': pui,
         # TODO: check this ตอนแรกเยอะเกินไปหรือเปล่า
-        'hos_mild': params['p_mild']*active_cases,
-        'hos_severe': params['p_severe']*active_cases,
-        'hos_critical': params['p_critical']*active_cases,
-        'hos_fatal': params['cfr']*active_cases,
+        'hos_mild': params['p_mild'] * active_cases,
+        'hos_severe': params['p_severe'] * active_cases,
+        'hos_critical': params['p_critical'] * active_cases,
+        'hos_fatal': params['cfr'] * active_cases,
         'home_mild': 0,
         'home_severe': 0,
         'hotel_mild': 0,
         'hotel_severe': 0,
-        'r_mild_hos': params['p_mild']*recover,
+        'r_mild_hos': params['p_mild'] * recover,
         'r_mild_home': 0,
         'r_mild_hotel': 0,
-        'r_severe_hos': params['p_severe']*recover,
+        'r_severe_hos': params['p_severe'] * recover,
         'r_severe_home': 0,
         'r_severe_hotel': 0,
-        'r_critical_hos': (params['p_critical'] + params['cfr'])*recover,
+        'r_critical_hos': (params['p_critical'] + params['cfr']) * recover,
         'death': death,
         'new_hos_mild': 0,
         'new_hos_severe': 0,
@@ -274,29 +279,62 @@ def gen_initial(params, user_input):
     return initial_data, params
 
 
+def summarize_seir(seir_df):
+    summary_df = pd.DataFrame()
+    summary_df['date'] = seir_df['date']
+    summary_df['recovered'] = (
+            seir_df['r_mild_hos']
+            + seir_df['r_mild_home']
+            + seir_df['r_mild_hotel']
+            + seir_df['r_severe_hos']
+            + seir_df['r_severe_home']
+            + seir_df['r_severe_hotel']
+            + seir_df['r_critical_hos']
+    )
+    summary_df['death'] = seir_df['death']
+    summary_df['active_cases'] = (
+            seir_df['hos_mild']
+            + seir_df['hos_severe']
+            + seir_df['hos_critical']
+            + seir_df['hos_fatal']
+            + seir_df['home_mild']
+            + seir_df['home_severe']
+            + seir_df['hotel_mild']
+            + seir_df['hotel_severe']
+    )
+    summary_df['total_confirm_cases'] = summary_df['active_cases'] + summary_df['recovered'] + summary_df['death']
+    summary_df['new_cases'] = seir_df['new_hos_mild'] + seir_df['new_hos_severe'] + seir_df['new_hos_critical']
+    summary_df['pui'] = seir_df['pui']
+    summary_df['s'] = seir_df['s']
+    summary_df['e'] = seir_df['e']
+    summary_df['i'] = seir_df['i']
+
+    return summary_df
+
+
 def transform_seir(seir_df, params, hopital_market_share):
     hos_load_df = pd.DataFrame()
     hos_load_df['date'] = seir_df['date']
     hos_load_df['pt_hos_eod_mild'] = hopital_market_share * seir_df['hos_mild']
     hos_load_df['pt_hos_eod_severe'] = hopital_market_share * \
-        seir_df['hos_severe']
+                                       seir_df['hos_severe']
     hos_load_df['pt_hos_eod_critical'] = hopital_market_share * (
-        seir_df['hos_critical'] + seir_df['hos_fatal'])
+            seir_df['hos_critical'] + seir_df['hos_fatal'])
     hos_load_df['pt_hos_new_mild'] = hopital_market_share * \
-        seir_df['new_hos_mild']
+                                     seir_df['new_hos_mild']
     hos_load_df['pt_hos_new_severe'] = hopital_market_share * \
-        seir_df['new_hos_severe']
+                                       seir_df['new_hos_severe']
     hos_load_df['pt_hos_new_critical'] = hopital_market_share * \
-        seir_df['new_hos_critical']
+                                         seir_df['new_hos_critical']
     hos_load_df['pt_hos_neg_cases'] = hopital_market_share * seir_df['new_pui'] / (
-        1 - params['p_test_positive'])
+            1 - params['p_test_positive'])
     hos_load_df['pt_hos_pui'] = hopital_market_share * seir_df[
         'pui'] * 1  # TODO: add parameter to adjust % of pui admit
 
     return hos_load_df
 
 
-def project_resource(df, params):
+def project_resource(df, resource_consumption):
     resources_name = [
         'icu_bed',
         'hospital_bed',
@@ -307,11 +345,11 @@ def project_resource(df, params):
     # icu
     resources_df['bed_icu'] = round(df['pt_hos_eod_critical'], 0)
     resources_df['aiir'] = round(
-        (df['pt_hos_eod_mild'] + df['pt_hos_eod_severe'] + df['pt_hos_eod_critical']) * params[
+        (df['pt_hos_eod_mild'] + df['pt_hos_eod_severe'] + df['pt_hos_eod_critical']) * resource_consumption[
             'p_aiir'], 0)
     resources_df['venti'] = round(
-        resources_df['bed_icu'] * params['p_vent'], 0)
-    resources_df['ecmo'] = round(resources_df['bed_icu'] * params['p_ecmo'], 0)
+        resources_df['bed_icu'] * resource_consumption['p_vent'], 0)
+    resources_df['ecmo'] = round(resources_df['bed_icu'] * resource_consumption['p_ecmo'], 0)
 
     # hos
     resources_df['bed_hos'] = round(
@@ -324,14 +362,26 @@ def project_resource(df, params):
 
     # man
     resources_df['staff_nurse_icu'] = round(
-        resources_df['bed_icu'] * params['staff_nurse_icu_per_pt'] / params[
+        resources_df['bed_icu'] * resource_consumption['staff_nurse_icu_per_pt'] / resource_consumption[
             'staff_shift_workshour'], 0)
     resources_df['staff_nurse_aid_icu'] = round(
-        resources_df['bed_icu'] * params['staff_nurse_aid_icu_per_pt'] / params[
+        resources_df['bed_icu'] * resource_consumption['staff_nurse_aid_icu_per_pt'] / resource_consumption[
             'staff_shift_workshour'], 0)
 
     # material
     # favipiravir
+    resources_df['drug_favipiravir_first_dose'] = resource_consumption['favipiravir_first_used'] * (
+            df['pt_hos_new_severe'] + df['pt_hos_new_critical'])
+    s_cumsum = df['pt_hos_new_severe'].cumsum()
+    s_diff = pd.Series([0] * 5).append(s_cumsum)[:len(s_cumsum)].reset_index(drop=True)
+    df['pt_hos_severe_first_5day'] = s_cumsum - s_diff
+    s_cumsum = df['pt_hos_new_critical'].cumsum()
+    s_diff = pd.Series([0] * 10).append(s_cumsum)[:len(s_cumsum)].reset_index(drop=True)
+    df['pt_hos_critical_first_10day'] = s_cumsum - s_diff
+    resources_df['drug_favipiravir_census_dose'] = resource_consumption['faviriravir_census_used'] * (
+            df['pt_hos_severe_first_5day'] + df['pt_hos_critical_first_10day'])
+    resources_df['drug_favipiravir'] = resources_df['drug_favipiravir_first_dose'] + resources_df[
+        'drug_favipiravir_census_dose']
     # chloroquine
     # test kit
 
@@ -347,7 +397,7 @@ def prepare_input(user_input):
                              default_params['social_distancing_rate'])),
         float(user_input.get('social_distancing_start',
                              default_params['social_distance_day_start'])),
-        float(user_input.get('social_distancing',
+        float(user_input.get('social_distancing_end',
                              default_params['social_distance_day_end']))
     ]
     user_input['regional_population'] = user_input.get(
@@ -386,3 +436,20 @@ def seir_df_to_json(seir_df, resource_df):
     resource_json = resource_df.set_index(
         'date').to_json(orient='split', date_format='iso')
     return seir_json, resource_json
+
+
+## user input
+user_input = {
+    "doubling_time": 7.5,
+    "social_distancing": 0,
+    "social_distancing_start": 0,
+    "social_distancing_end": 1,
+    "hospital_market_share": 0.5,
+    "start_date": "2020-04-05",
+    "steps": 300,
+    "regional_population": 66558935,
+    "total_confirm_cases": 2169,
+    "active_cases": 1353,
+    "critical_cases": 23,
+    "death": 23
+}
