@@ -1,3 +1,4 @@
+from datetime import datetime
 import pandas as pd
 
 # Data preparation
@@ -37,6 +38,46 @@ resource_consumption = {
     # (จำนวนชั่วโมงทำงาน*จำนวนบุคลากรในทีม)/จำนวนผู้ป่วยที่ดูแล
     'staff_nurse_aid_icu_per_pt': (24 * 1) / 2,
 }
+
+
+def get_default():
+    params = {'d_incubation': 6.1,
+              'd_infectious': 2.3,
+              'd_test': 2,
+              'd_death': 28,
+              'los_hos_mild': 14,
+              'los_hos_severe': 28,
+              'los_hos_critical': 28,
+              'los_home_mild': 7,
+              'los_home_severe': 7,
+              'los_hotel_mild': 7,
+              'los_hotel_severe': 7,
+              'cfr': 0.023,
+              'p_critical': 0.05 - 0.023,
+              'p_severe': 0.14,
+              'p_mild': 0.81,
+              'p_mild_hotel': 0,
+              'p_mild_home': 0,
+              'p_severe_hotel': 0,
+              'p_severe_home': 0,
+              'p_test_positive': 0.1,
+              # Date today
+              'today': datetime.today().strftime('%Y-%m-%d'),
+              # Social distancing
+              'social_distancing_rate': 0.5,
+              'social_distance_day_start': 10,
+              'social_distance_day_end': 40,
+              'hospital_market_share': 15,
+              # Cases default_data
+              'doubling_time': 7,
+              'total_confirm_cases': 3000,
+              'critical_cases': 0,
+              'regional_population': 640000,
+              'death': 0,
+              # Predict for
+              'steps': 14
+              }
+    return params
 
 
 def SEIR(params, initial_data, steps=1):
@@ -170,38 +211,17 @@ def get_differentials(params, sod, day=0):
             new_hos_mild, new_hos_severe, new_hos_critical, new_pui]
 
 
-def get_default():
-    params = {'d_incubation': 6.1,
-              'd_infectious': 2.3,
-              'd_test': 2,
-              'd_death': 28,
-              'los_hos_mild': 14,
-              'los_hos_severe': 28,
-              'los_hos_critical': 28,
-              'los_home_mild': 7,
-              'los_home_severe': 7,
-              'los_hotel_mild': 7,
-              'los_hotel_severe': 7,
-              'cfr': 0.023,
-              'p_critical': 0.05 - 0.023,
-              'p_severe': 0.14,
-              'p_mild': 0.81,
-              'p_mild_hotel': 0,
-              'p_mild_home': 0,
-              'p_severe_hotel': 0,
-              'p_severe_home': 0,
-              'p_test_positive': 0.1
-              }
-    return params
-
-
 def gen_initial(params, user_input):
-    doubling_time = int(user_input['doubling_time'])
-    total_confirm_cases = int(user_input['total_confirm_cases'])
-    regional_population = int(user_input['regional_population'])
+    doubling_time = int(user_input.get(
+        'doubling_time', params['doubling_time']))
+    total_confirm_cases = int(user_input.get(
+        'total_confirm_cases', params['total_confirm_cases']))
+    regional_population = int(user_input.get(
+        'regional_population', params['regional_population']))
 
     active_cases = int(user_input['active_cases'])
-    death = int(user_input['death'])
+    death = int(user_input.get(
+        'death', params['death']))
 
     growth = 2**(1/doubling_time) - 1
     gamma = 1/params['d_infectious']
@@ -320,25 +340,45 @@ def project_resource(df, params):
 
 def prepare_input(user_input):
     default_params = get_default()
-    input_parcel = user_input
-    user_input['start_date'] = pd.to_datetime(user_input['start_date'])
+    user_input['start_date'] = pd.to_datetime(
+        user_input.get('start_date', default_params['today']))
     user_input['social_distancing'] = [
-        float(user_input['social_distancing']),
-        float(user_input['social_distancing_start']),
-        float(user_input['social_distancing_end'])
+        float(user_input.get('social_distancing',
+                             default_params['social_distancing_rate'])),
+        float(user_input.get('social_distancing_start',
+                             default_params['social_distance_day_start'])),
+        float(user_input.get('social_distancing',
+                             default_params['social_distance_day_end']))
     ]
-    return input_parcel, default_params
+    user_input['regional_population'] = user_input.get(
+        'regional_population', default_params['regional_population'])
+    user_input['hospital_market_share'] = user_input.get(
+        'hospital_market_share', default_params['hospital_market_share'])
+    user_input['doubling_time'] = user_input.get(
+        'doubling_time', default_params['doubling_time'])
+    user_input['doubling_time'] = user_input.get(
+        'doubling_time', default_params['doubling_time'])
+    user_input['critical_cases'] = user_input.get(
+        'critical_cases', default_params['critical_cases'])
+    user_input['death'] = user_input.get(
+        'death', default_params['death'])
+    return user_input, default_params
 
 
 def seir_estimation(params, initial_data, user_input):
-    SEIR_df = SEIR(params, initial_data, int(user_input['steps']))
+    predict_step = int(user_input.get('steps', params['steps']))
+    hospital_market_share = float(user_input.get(
+        'hospital_market_share', params['hospital_market_share']))
+
+    SEIR_df = SEIR(params, initial_data, predict_step)
 
     hos_load_df = transform_seir(
-        SEIR_df, params, float(user_input['hospital_market_share']))
+        SEIR_df, params, hospital_market_share)
     resource_projection_df = project_resource(
         hos_load_df, resource_consumption)
 
     return SEIR_df, resource_projection_df
+
 
 def seir_df_to_json(seir_df, resource_df):
     seir_json = seir_df.set_index('date').to_json(

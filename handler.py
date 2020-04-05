@@ -54,7 +54,8 @@ def supply_service(event, context):
     )
 
     # Population calculator
-    patients = seir_df[['hos_mild', 'hos_severe', 'hos_critical']].sum(axis=1).to_list()
+    patients = seir_df[['hos_mild', 'hos_severe',
+                        'hos_critical']].sum(axis=1).to_list()
 
     pop_y = ''
     pop_x = ''
@@ -96,7 +97,6 @@ def supply_service(event, context):
             icu_demand_x += '%2C'
             # icu_demand_x += '%7C'
 
-
     # plotting
     fig, ax = plt.subplots(figsize=(16, 9))
     ax.plot(resource_df['date'], resource_df['bed_icu'])
@@ -125,12 +125,7 @@ def supply_service(event, context):
         "pop_x": pop_x,
         "pop_y": pop_y,
         "label_x": label_x,
-        "icu_supply_y": icu_supply_y,
-        "icu_supply_x": icu_supply_x,
-        # "icu_supply_label_x": icu_supply_label_x,
-        "icu_demand_y": icu_demand_y,
-        "icu_demand_x": icu_demand_x,
-        # "icu_demand_label_x": icu_demand_label_x,
+        "icu_img": icu_image_base_64
     }
 
     try:
