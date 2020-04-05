@@ -1,13 +1,17 @@
 import json
-from io import BytesIO
+import os
 import base64
 
 import pandas as pd
 import sendgrid
 import matplotlib.pyplot as plt
+from io import BytesIO
+from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from method.seir import gen_initial, prepare_input, seir_estimation, seir_df_to_json
+
+load_dotenv()
 
 
 def supply_estimation(event, context):
@@ -39,7 +43,8 @@ def supply_estimation(event, context):
 
 
 def supply_service(event, context):
-    SENDGRID_API_KEY = "###SENDGRID_SECURITY_CODE####"
+    # "###SENDGRID_SECURITY_CODE####"
+    SENDGRID_API_KEY = os.getenv("SENDGRID_KEY")
 
     # Get post detail
     user_input = json.loads(event['body'])
