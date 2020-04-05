@@ -39,7 +39,7 @@ def supply_estimation(event, context):
 
 
 def supply_service(event, context):
-    SENDGRID_API_KEY = "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"
+    SENDGRID_API_KEY = "###SENDGRID_SECURITY_CODE####"
 
     # Get post detail
     user_input = json.loads(event['body'])
