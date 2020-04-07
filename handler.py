@@ -16,6 +16,8 @@ from model_run import seir_estimation
 
 load_dotenv()
 
+# check
+
 
 def seir_df_to_json(seir_df, resource_df):
     seir_json = seir_df.set_index('date').to_json(
@@ -39,7 +41,8 @@ def prepare_input(user_input):
     ]
     hospital_region = user_input.get('hospital_region')
     user_input['area'] = hospital_region.split('(')[0].rstrip()
-    user_input['regional_population'] = float(hospital_region.split('(')[1].split()[0].replace(',', ''))
+    user_input['regional_population'] = float(
+        hospital_region.split('(')[1].split()[0].replace(',', ''))
     user_input['hospital_market_share'] = user_input.get(
         'hospital_market_share', default_params['hospital_market_share'])
     user_input['doubling_time'] = user_input.get(
@@ -61,7 +64,8 @@ def supply_estimation(event, context):
     model_input, default_params = prepare_input(user_input)
     initial_data, params = gen_initial(default_params, model_input)
     resource_consumption = get_resource_consumption()
-    seir_df, hos_load_df, resource_df = seir_estimation(params, initial_data, user_input, resource_consumption)
+    seir_df, hos_load_df, resource_df = seir_estimation(
+        params, initial_data, user_input, resource_consumption)
     seir_json, resource_json = seir_df_to_json(seir_df, resource_df)
 
     response_body = ''.join([
