@@ -4,13 +4,13 @@
 
 service: covid-supply-estimator-api
 frameworkVersion: ">=1.40.0 <2.0.0"
-app: my-first-app # change app_id
-org: cupurion234 # change organization
+# app: my-first-app # change app_id
+# org: cupurion234 # change organization
 
 ## app and org for use with dashboard.serverless.com
 # service: helloworld
-# app: helloworld-app
-# org: panangam
+app: cocast-serverless-seir-api
+org: cocast
 
 provider:
   name: aws
