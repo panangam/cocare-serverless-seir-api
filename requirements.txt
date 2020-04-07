@@ -2,3 +2,4 @@ pandas>=0.24.2
 pandas-ta==0.1.36b0
 sendgrid==6.2.1
 matplotlib>=3.0.3
+python-dotenv==0.12.0

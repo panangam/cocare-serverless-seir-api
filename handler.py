@@ -114,7 +114,7 @@ def supply_service(event, context):
     message = Mail(
         from_email=from_email,
         to_emails=to_email)
-    message.template_id = 'd-12f42d19558d4dac800536a34eb6ffee'
+    message.template_id = 'd-3509900158194a85b1f3f6f73b5a953c'
     message.dynamic_template_data = {
         'subject': "CoCare report for โรงพยาบาล {}".format(user_input["hospital_name"]),
         # "writing_date": user_input["start_date"],
