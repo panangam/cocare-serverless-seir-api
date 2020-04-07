@@ -42,7 +42,7 @@ def prepare_input(user_input):
     hospital_region = user_input.get('hospital_region')
     user_input['area'] = hospital_region.split('(')[0].rstrip()
     user_input['regional_population'] = float(
-        hospital_region.split('(')[1].split()[0].replace(',', ''))
+        hospital_region.split('(')[1].split()[0].split('คน')[0].replace(',', ''))
     user_input['hospital_market_share'] = user_input.get(
         'hospital_market_share', default_params['hospital_market_share'])
     user_input['doubling_time'] = user_input.get(
@@ -96,9 +96,10 @@ def supply_service(event, context):
 
     # Model and prediction
     initial_data, params = gen_initial(default_params, user_input)
-    seir_df, resource_df = seir_estimation(
-        params, initial_data, user_input
-    )
+    resource_consumption = get_resource_consumption()
+    seir_df, hos_load_df, resource_df = seir_estimation(
+        params, initial_data, user_input, resource_consumption)
+    seir_json, resource_json = seir_df_to_json(seir_df, resource_df)
 
     # Population calculator
     patients = seir_df[['hos_mild', 'hos_severe',
@@ -156,7 +157,7 @@ def supply_service(event, context):
     message = Mail(
         from_email=from_email,
         to_emails=to_email)
-    message.template_id = 'd-12f42d19558d4dac800536a34eb6ffee'
+    message.template_id = 'd-3509900158194a85b1f3f6f73b5a953c'
     message.dynamic_template_data = {
         'subject': "CoCare report for โรงพยาบาล {}".format(user_input["hospital_name"]),
         # "writing_date": user_input["start_date"],
