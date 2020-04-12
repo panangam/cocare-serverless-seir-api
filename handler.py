@@ -102,8 +102,7 @@ def supply_service(event, context):
     seir_json, resource_json = seir_df_to_json(seir_df, resource_df)
 
     # Population calculator
-    patients = seir_df[['hos_mild', 'hos_severe',
-                        'hos_critical']].sum(axis=1).to_list()
+    patients = summary_df['active_cases'].to_list()
 
     pop_y = ''
     pop_x = ''
