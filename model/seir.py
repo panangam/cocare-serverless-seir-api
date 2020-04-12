@@ -35,7 +35,7 @@ def get_default_params():
               'doubling_time': 7,
               'total_confirm_cases': 1,
               'active_cases': 1,
-              'critical_cases': 0,
+              'critical_cases': -1,
               'regional_population': 66000000,
               'death': 0,
               # Predict for
@@ -51,8 +51,10 @@ def gen_initial(params, user_input):
         'total_confirm_cases', params['total_confirm_cases']))
     regional_population = int(user_input.get(
         'regional_population', params['regional_population']))
-
     active_cases = int(user_input['active_cases'])
+    critical_cases = user_input.get('critical_cases')
+    if critical_cases < 0:
+        critical_cases = (params['p_critical'] + params['cfr']) * active_cases
     death = int(user_input.get(
         'death', params['death']))
 
@@ -79,11 +81,10 @@ def gen_initial(params, user_input):
         'e': e,
         'i': i,
         'pui': pui,
-        # TODO: check this ตอนแรกเยอะเกินไปหรือเปล่า
-        'hos_mild': params['p_mild'] * active_cases,
-        'hos_severe': params['p_severe'] * active_cases,
-        'hos_critical': params['p_critical'] * active_cases,
-        'hos_fatal': params['cfr'] * active_cases,
+        'hos_mild': (active_cases - critical_cases) * params['p_mild'] / (params['p_mild'] + params['p_severe']),
+        'hos_severe': (active_cases - critical_cases) * params['p_severe'] / (params['p_mild'] + params['p_severe']),
+        'hos_critical': critical_cases * params['p_critical'] / (params['p_critical'] + params['cfr']),
+        'hos_fatal': critical_cases * params['cfr'] / (params['p_critical'] + params['cfr']),
         'home_mild': 0,
         'home_severe': 0,
         'hotel_mild': 0,
