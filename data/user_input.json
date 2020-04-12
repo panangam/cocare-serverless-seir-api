@@ -1,0 +1,12 @@
+{
+  "hospital_name": "จะนะ",
+  "hospital_region": "ประเทศไทย (66,558,935  คน)",
+  "total_confirm_cases": 2300,
+  "active_cases": 1000,
+  "critical_cases": 10,
+  "death": 10,
+  "from_email": "fightcovidthailand@gmail.com",
+  "to_email": "phuripon.ch@gmail.com",
+  "doubling_time": 7,
+  "steps": 14
+}
