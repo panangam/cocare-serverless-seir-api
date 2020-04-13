@@ -101,8 +101,7 @@ def supply_service(event, context):
     seir_json, resource_json = seir_df_to_json(seir_df, resource_df)
 
     # Population calculator
-    patients = seir_df[['hos_mild', 'hos_severe',
-                        'hos_critical']].sum(axis=1).to_list()
+    patients = summary_df['active_cases'].to_list()
 
     future_hos_mild = math.floor(seir_df.tail(1)['hos_mild'])
     future_hos_severe = math.floor(seir_df.tail(1)['hos_severe'])
@@ -203,3 +202,19 @@ def supply_service(event, context):
             "statusCode": 500,
             "body": json.dumps(e.message)
         }
+
+
+def load_json(filename):
+    with open('./data/' + filename) as json_file:
+        return json.load(json_file)
+
+
+if __name__ == '__main__':
+    # test
+    user_input = load_json('user_input.json')
+    model_input, default_params = prepare_input(user_input)
+    initial_data, params = gen_initial(default_params, model_input)
+    resource_consumption = get_resource_consumption()
+    seir_df, hos_load_df, resource_df = seir_estimation(
+        params, initial_data, user_input, resource_consumption)
+    summary_df = summarize_seir(seir_df)
