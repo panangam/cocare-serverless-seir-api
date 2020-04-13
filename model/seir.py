@@ -53,8 +53,10 @@ def gen_initial(params, user_input):
         'regional_population', params['regional_population']))
     active_cases = int(user_input['active_cases'])
     critical_cases = user_input.get('critical_cases')
-    if critical_cases < 0:
+    if critical_cases == -1:
         critical_cases = (params['p_critical'] + params['cfr']) * active_cases
+    else:
+        critical_cases = int(user_input.get('critical_cases'))
     death = int(user_input.get(
         'death', params['death']))
 
