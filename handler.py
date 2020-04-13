@@ -1,6 +1,7 @@
 import json
 import os
 import base64
+import math
 
 import pandas as pd
 import sendgrid
@@ -12,11 +13,9 @@ from sendgrid.helpers.mail import Mail
 from model.seir import gen_initial, summarize_seir, get_default_params
 from model.resource_projection import get_resource_consumption
 from model_run import seir_estimation
-
+from datetime import timedelta, date, datetime
 
 load_dotenv()
-
-# check
 
 
 def seir_df_to_json(seir_df, resource_df):
@@ -53,6 +52,7 @@ def prepare_input(user_input):
         'critical_cases', default_params['critical_cases'])
     user_input['death'] = user_input.get(
         'death', default_params['death'])
+    user_input['icu_supply'] = user_input.get('icu_supply', 0)
     return user_input, default_params
 
 
@@ -85,7 +85,6 @@ def supply_estimation(event, context):
 
 
 def supply_service(event, context):
-    # "###SENDGRID_SECURITY_CODE####"
     SENDGRID_API_KEY = os.getenv("SENDGRID_KEY")
 
     # Get post detail
@@ -105,45 +104,51 @@ def supply_service(event, context):
     patients = seir_df[['hos_mild', 'hos_severe',
                         'hos_critical']].sum(axis=1).to_list()
 
+    future_hos_mild = math.floor(seir_df.tail(1)['hos_mild'])
+    future_hos_severe = math.floor(seir_df.tail(1)['hos_severe'])
+    future_hos_critical = math.floor(seir_df.tail(1)['hos_critical'])
+    future_total = future_hos_mild + future_hos_severe + future_hos_critical
+
+    # Population calculator
     pop_y = ''
     pop_x = ''
     label_x = ''
+    pop_string = ''
     for index, i in enumerate(patients):
         pop_y += str(i)
         pop_x += str(index)
-        label_x += "D{}".format(str(index + 1))
+        pop_string += str(math.floor(i))
+        label_x += str((date.today() +
+                        timedelta(days=index+1)).strftime('%-d/%-m'))
         if index < (len(patients) - 1):
-            pop_y += '%2C'
-            pop_x += '%2C'
-            label_x += '%7C'
+            pop_y += ','
+            pop_x += ','
+            label_x += '|'
+            pop_string += '|'
 
     # Supply ICU calculator
-    # icu_supply = [1000, 890, 750, 640, 550,
-    #               320, 180, 110, 80, 60, 30, 20, 12, 5, 0]
     icu_demand = resource_df['bed_icu'].to_list()
-
     icu_supply_y = ''
     icu_supply_x = ''
     icu_supply_label_x = ''
     icu_demand_y = ''
     icu_demand_x = ''
     icu_demand_label_x = ''
-    # for index, i in enumerate(icu_supply):
-    #     icu_supply_y += str(i)
-    #     icu_supply_x += str(index)
-    #     # icu_supply_x += "D{}".format(str(index+1))
-    #     if index < (len(icu_supply) - 1):
-    #         icu_supply_y += '%2C'
-    #         icu_supply_x += '%2C'
-    #         # icu_supply_x += '%7C'
+    icu_string = ''
+    icu_supply_y = ''
     for index, i in enumerate(icu_demand):
         icu_demand_y += str(i)
         icu_demand_x += str(index)
-        # icu_demand_x += "D{}".format(str(index+1))
+        icu_string += str(math.floor(i))
+        icu_supply_y += str(user_input['icu_supply'])
+        icu_supply_label_x += str((date.today() +
+                                   timedelta(days=index+1)).strftime('%-d/%-m'))
         if index < (len(icu_demand) - 1):
-            icu_demand_y += '%2C'
-            icu_demand_x += '%2C'
-            # icu_demand_x += '%7C'
+            icu_demand_y += ','
+            icu_demand_x += ','
+            icu_supply_label_x += '|'
+            icu_string += '|'
+            icu_supply_y += ','
 
     # plotting
     fig, ax = plt.subplots(figsize=(16, 9))
@@ -160,7 +165,7 @@ def supply_service(event, context):
     message.template_id = 'd-3509900158194a85b1f3f6f73b5a953c'
     message.dynamic_template_data = {
         'subject': "CoCare report for โรงพยาบาล {}".format(user_input["hospital_name"]),
-        # "writing_date": user_input["start_date"],
+        'date': date.today().strftime('%-d/%-m/%Y'),
         "population": user_input["regional_population"],
         "hos_name": user_input["hospital_name"],
         "hos_market_share": user_input["hospital_market_share"],
@@ -169,11 +174,20 @@ def supply_service(event, context):
         "total_cases": user_input["total_confirm_cases"],
         "active_cases": user_input["active_cases"],
         "critical_cases": user_input["critical_cases"],
+        "future_total": str(future_total),
+        "future_hos_mild": str(future_hos_mild),
+        "future_hos_severe": str(future_hos_severe),
+        "future_hos_critical": str(future_hos_critical),
         "death_cases": user_input["death"],
         "pop_x": pop_x,
         "pop_y": pop_y,
+        "pop_string": pop_string,
         "label_x": label_x,
-        "icu_img": icu_image_base_64
+        "icu_x": icu_demand_x,
+        "icu_y": icu_demand_y,
+        "icu_supply_y": icu_supply_y,
+        "label_icu_x": icu_supply_label_x,
+        "icu_string": icu_string
     }
 
     try:
