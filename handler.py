@@ -68,6 +68,9 @@ def supply_estimation(event, context):
         params, initial_data, user_input, resource_consumption)
     seir_json, resource_json = seir_df_to_json(seir_df, resource_df)
 
+    # update user_input
+    user_input['critical_cases'] = round(initial_data['hos_critical'] + initial_data['hos_fatal'], 0)
+
     response_body = ''.join([
         '{"seir":',
         seir_json,
@@ -100,6 +103,9 @@ def supply_service(event, context):
         params, initial_data, user_input, resource_consumption)
     seir_json, resource_json = seir_df_to_json(seir_df, resource_df)
 
+    # update user_input
+    user_input['critical_cases'] = round(initial_data['hos_critical'] + initial_data['hos_fatal'], 0)
+
     # Population calculator
     summary_df = summarize_seir(seir_df)
     patients = summary_df['active_cases'].to_list()
@@ -119,7 +125,7 @@ def supply_service(event, context):
         pop_x += str(index)
         pop_string += str(math.floor(i))
         label_x += str((date.today() +
-                        timedelta(days=index+1)).strftime('%-d/%-m'))
+                        timedelta(days=index + 1)).strftime('%-d/%-m'))
         if index < (len(patients) - 1):
             pop_y += ','
             pop_x += ','
@@ -142,7 +148,7 @@ def supply_service(event, context):
         icu_string += str(math.floor(i))
         icu_supply_y += str(user_input['icu_supply'])
         icu_supply_label_x += str((date.today() +
-                                   timedelta(days=index+1)).strftime('%-d/%-m'))
+                                   timedelta(days=index + 1)).strftime('%-d/%-m'))
         if index < (len(icu_demand) - 1):
             icu_demand_y += ','
             icu_demand_x += ','
