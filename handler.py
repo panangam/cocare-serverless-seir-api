@@ -175,7 +175,7 @@ def supply_service(event, context):
         "population": user_input["regional_population"],
         "hos_name": user_input["hospital_name"],
         "hos_market_share": user_input["hospital_market_share"],
-        "region": user_input["hospital_region"],
+        "region": user_input["area"],
         "doubling_time": user_input["doubling_time"],
         "total_cases": user_input["total_confirm_cases"],
         "active_cases": user_input["active_cases"],
